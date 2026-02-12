@@ -188,3 +188,65 @@ def comp_obs(observables, n=4, N=20, g=1.5, num_delta_t=2, total_time=100):
     ax.legend(title="Observable")
     fig.tight_layout()
     plt.show()
+
+def return_vals(observable, n=4, N=20, g=1.5, num_delta_t=2, total_time=100):
+    T_vals = []
+    for t in range(0, total_time): 
+        T_vals.extend(np.linspace(t, t+1, num_delta_t+1)[:-1])
+    exp_vals = []
+    sum_exp_vals = []
+    for T in T_vals[1:]:
+        val = (plot_measurement_loop_one_observable(n, N, observable, T, g)[1][0])
+        exp_vals.append(val)
+        sum_exp_val = np.trapz(exp_vals, T_vals[:len(exp_vals)]) / T
+        sum_exp_vals.append(sum_exp_val)
+    return T_vals[1:], sum_exp_vals
+
+def calc_stable_pt(T_vals, sum_exp_vals):
+    section = [0, 40, 80, 120, 160, 199]
+    smallest_idxs = []
+    smallest_nums = []
+    for i in range(len(section)-1):
+        section_begin = section[i]+5
+        section_end = section[i+1]-5        
+        T_vals_section = T_vals[section_begin:section_end]
+        sum_exp_section = sum_exp_vals[section_begin:section_end]
+
+        diff = [sum_exp_section[0]]
+        for i in range(len(T_vals_section) - 1):
+            diff.append(sum_exp_section[i+1] - sum_exp_section[i])
+        diff.append(sum_exp_section[-1])
+
+        diff_avg = []
+        for i in range(len(T_vals_section)):
+            diff_avg.append((diff[i] + diff[i+1])/2)
+
+        smallest_idx = 0
+        smallest_num = abs(diff_avg[0])
+        for i in range(len(T_vals_section)):
+            if abs(diff_avg[i]) < smallest_num:
+                smallest_idx = i
+                smallest_num = abs(diff_avg[i])
+
+        smallest_idxs.append(smallest_idx+section_begin)
+        smallest_nums.append(smallest_num)
+
+    return smallest_idxs, smallest_nums
+
+def plot_stable_pt(observable, T_vals, sum_exp_vals, stable_idxs):
+    plt.figure(figsize=(12, 5))
+    plt.plot(T_vals, sum_exp_vals, "o-", markersize=4, label=f"observable={observable}")
+    plt.grid(True)
+    plt.scatter(
+        np.array(T_vals)[stable_idxs],
+        np.array(sum_exp_vals)[stable_idxs],
+        color="red",
+        s=80,
+        zorder=5,
+        label="selected indices"
+    )
+    plt.xlabel("Total time T")
+    plt.ylabel(f"{observable} Expectation Value Averaging")
+    plt.title(f"Expectation vs T")
+    plt.legend(title="Observable")
+    plt.show()
